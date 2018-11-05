@@ -22,9 +22,10 @@ import * as forever from 'forever-monitor';
 import * as morgan from 'morgan';
 import * as net from 'net';
 
+import { errors, logger } from '../utils';
+
 import apiFactory from './api';
-import { captureException, Raven } from './errors';
-import { logger, Netmask } from './utils';
+import { Netmask } from './utils';
 
 interface AsyncApplication extends express.Application {
 	listenAsync(port: number): Promise<ReturnType<express.Application['listen']>>;
@@ -119,7 +120,7 @@ const worker = (instanceId: number) => {
 		spinSleepTime: 1000,
 	}).on('exit', err => {
 		logger.error(`OpenVPN error: ${err.message}`);
-		captureException(err, 'OpenVPN Error');
+		errors.captureException(err, 'OpenVPN Error');
 		process.exit(2);
 	});
 
@@ -129,7 +130,7 @@ const worker = (instanceId: number) => {
 	app.use(morgan('combined'));
 	app.use(compression());
 	app.use(apiFactory());
-	app.use(Raven.errorHandler());
+	app.use(errors.Raven.errorHandler());
 
 	return app
 		.listenAsync(apiPort)

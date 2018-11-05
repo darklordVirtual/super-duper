@@ -15,15 +15,14 @@
 	along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import {
-	PinejsClientCoreFactory,
-	PinejsClientRequest,
-} from 'pinejs-client-request';
-export { PinejsClientCoreFactory } from 'pinejs-client-request';
 import * as pkg from 'pjson';
 import * as winston from 'winston';
 
-export type AnyObject = PinejsClientCoreFactory.AnyObject;
+import { PinejsClientRequest } from 'pinejs-client-request';
+export { PinejsClientCoreFactory } from 'pinejs-client-request';
+
+import * as errors from './errors';
+export { errors };
 
 export const balenaApi = new PinejsClientRequest(
 	`https://${process.env.BALENA_API_HOST}/v5/`,
@@ -35,6 +34,4 @@ winston.add(
 	new winston.transports.Console({ format: winston.format.simple() }),
 );
 
-export { Netmask } from './netmask';
-export { request } from './request';
 export { winston as logger };

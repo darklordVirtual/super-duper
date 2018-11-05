@@ -18,8 +18,7 @@
 import * as Promise from 'bluebird';
 import { Middleware, Tunnel } from 'node-tunnel';
 
-import { captureException, HandledTunnelingError, Raven } from '../errors';
-import { logger } from '../utils';
+import { errors, logger } from '../utils';
 
 import * as device from './device';
 
@@ -47,7 +46,7 @@ const tunnelToDevice: Middleware = (req, cltSocket, _head, next) =>
 			throw new Error(`Invalid hostname: ${req.url}`);
 		}
 		const [, uuid, port = '80'] = match;
-		Raven.setContext({ user: { uuid } });
+		errors.Raven.setContext({ user: { uuid } });
 		logger.info(`tunnel requested for ${uuid}:${port}`);
 
 		// we need to use VPN_SERVICE_API_KEY here as this could be an unauthenticated request (public url)
@@ -56,7 +55,7 @@ const tunnelToDevice: Middleware = (req, cltSocket, _head, next) =>
 			.tap(data => {
 				if (data == null) {
 					cltSocket.end('HTTP/1.0 404 Not Found\r\n\r\n');
-					throw new HandledTunnelingError(`Device not found: ${uuid}`);
+					throw new errors.HandledTunnelingError(`Device not found: ${uuid}`);
 				}
 			})
 			.tap(data =>
@@ -67,28 +66,37 @@ const tunnelToDevice: Middleware = (req, cltSocket, _head, next) =>
 							cltSocket.end(
 								'HTTP/1.0 407 Proxy Authorization Required\r\n\r\n',
 							);
-							throw new HandledTunnelingError(`Device not accessible: ${uuid}`);
+							throw new errors.HandledTunnelingError(
+								`Device not accessible: ${uuid}`,
+							);
 						}
 					})
 					.tap(() => {
 						if (!data.is_connected_to_vpn) {
 							cltSocket.end('HTTP/1.0 503 Service Unavailable\r\n\r\n');
-							throw new HandledTunnelingError(`Device not available: ${uuid}`);
+							throw new errors.HandledTunnelingError(
+								`Device not available: ${uuid}`,
+							);
 						}
 					}),
 			)
 			.tap(() => (req.url = `${uuid}.vpn:${port}`));
 	})
 		.then(() => next())
-		.catch(HandledTunnelingError, (err: HandledTunnelingError) => {
-			logger.error(`Tunneling Error - ${err.message}`);
-		})
+		.catch(
+			errors.HandledTunnelingError,
+			(err: errors.HandledTunnelingError) => {
+				logger.error(`Tunneling Error - ${err.message}`);
+			},
+		)
 		.catch((err: Error) => {
-			captureException(err, `error establishing tunnel to ${req.url}`, { req });
+			errors.captureException(err, `error establishing tunnel to ${req.url}`, {
+				req,
+			});
 			cltSocket.end('HTTP/1.1 500 Internal Server Error\r\n\r\n');
 		});
 
-const worker = (port: string) => {
+const worker = (port: string): Tunnel => {
 	logger.info(`connect-proxy worker process started with pid ${process.pid}`);
 	const tunnel = new Tunnel();
 	tunnel.use(tunnelToDevice);

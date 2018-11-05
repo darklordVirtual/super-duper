@@ -18,7 +18,7 @@
 import * as _Raven from 'raven';
 import { TypedError } from 'typed-error';
 
-import { logger, VERSION } from './utils';
+import { logger, VERSION } from './index';
 
 export const Raven = _Raven;
 

@@ -16,8 +16,8 @@
 */
 
 import * as Promise from 'bluebird';
-import { captureException, ServiceRegistrationError } from './errors';
-import { apiKey, balenaApi, logger } from './utils';
+
+import { apiKey, balenaApi, errors, logger } from '../../utils';
 
 export class ServiceInstance {
 	private _id: string | null = null;
@@ -32,7 +32,7 @@ export class ServiceInstance {
 			})
 			.then(({ id }: { id?: string }) => {
 				if (id == null) {
-					throw new ServiceRegistrationError(
+					throw new errors.ServiceRegistrationError(
 						'No service ID received on response',
 					);
 				}
@@ -41,7 +41,7 @@ export class ServiceInstance {
 				return this;
 			})
 			.catch(err => {
-				captureException(err, 'Failed to register with API');
+				errors.captureException(err, 'Failed to register with API');
 				// Retry until it works
 				return Promise.delay(this.interval).then(() => this.register());
 			});
@@ -71,7 +71,7 @@ export class ServiceInstance {
 		)
 			.return(true)
 			.catch(err => {
-				captureException(err, 'Failed to send a heartbeat to the API', {
+				errors.captureException(err, 'Failed to send a heartbeat to the API', {
 					tags: { service_id: this.getId() },
 				});
 				return false;
@@ -87,14 +87,14 @@ export class ServiceInstance {
 
 	public getId(): string {
 		if (this._id == null) {
-			throw new ServiceRegistrationError('Not Registered');
+			throw new errors.ServiceRegistrationError('Not Registered');
 		}
 		return this._id;
 	}
 
 	set id(id: string) {
 		if (this._id != null) {
-			throw new ServiceRegistrationError('Already Registered');
+			throw new errors.ServiceRegistrationError('Already Registered');
 		}
 		this._id = id;
 	}
